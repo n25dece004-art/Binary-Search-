@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minh họa Tìm kiếm Nhị phân & Code</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        h1 { color: #333; margin-top: 0; }
+        
+        .container {
+            max-width: 1250px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .controls { 
+            display: flex; justify-content: center; gap: 10px; align-items: center; 
+            flex-wrap: wrap; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px dashed #ccc;
+        }
+        input[type="number"] { padding: 8px; font-size: 16px; width: 80px; text-align: center; }
+        button {
+            padding: 8px 15px; font-size: 16px; color: white;
+            border: none; border-radius: 5px; cursor: pointer; transition: 0.2s; font-weight: bold;
+        }
+        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
+        #startBtn { background-color: #007bff; }
+        #pauseBtn { background-color: #17a2b8; display: none;}
+        #resetBtn { background-color: #6c757d; }
+        
+        .slider-container {
+            display: flex; align-items: center; gap: 10px; font-weight: bold; background: #e9ecef; padding: 5px 15px; border-radius: 5px;
+        }
+
+        /* Bố cục chia 2 cột */
+        .main-content {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* Cột trái: Giao diện mảng */
+        .left-panel {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden; /* Giữ khung gọn gàng */
+        }
+
+        /* Cập nhật để các ô luôn nằm trên 1 hàng */
+        #array-container {
+            display: flex; 
+            justify-content: flex-start; /* Ép về đầu để tránh lệch khi có scroll */
+            flex-wrap: nowrap; /* Bắt buộc không rớt dòng */
+            gap: 12px; 
+            margin-top: 40px; 
+            margin-bottom: 30px; 
+            width: 100%;
+            overflow-x: auto; /* Thêm thanh trượt ngang nếu chật */
+            padding-bottom: 10px;
+        }
+        
+        .box-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; /* Không cho phép ô vuông bị bóp méo */}
+        .box {
+            width: 45px; height: 45px; line-height: 45px; font-size: 17px; font-weight: bold;
+            border: 2px solid #333; border-radius: 5px; background-color: #fff; transition: all 0.3s;
+        }
+        
+        .pointer-label {
+            position: absolute; top: -25px; 
+            font-size: 13px; font-weight: bold; color: #d9534f; white-space: nowrap; min-height: 15px;
+        }
+
+        .index-label { margin-top: 8px; font-size: 15px; color: #6c757d; font-weight: bold; }
+
+        .left-right { border-color: #007bff; border-width: 4px; }
+        .mid { background-color: #ffc107; }
+        .found { background-color: #28a745; color: white; border-color: #28a745; }
+        .discarded { background-color: #e9ecef; color: #adb5bd; border-color: #dee2e6; opacity: 0.5; }
+        
+        #log { font-size: 17px; font-weight: bold; color: #555; min-height: 50px; background: #e9ecef; padding: 15px; border-radius: 5px; width: 90%; }
+
+        /* Cột phải: Giao diện Code IDE */
+        .right-panel {
+            flex: 2;
+            background-color: #282c34;
+            color: #abb2bf;
+            border-radius: 8px;
+            padding: 15px 0;
+            text-align: left;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 15px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            overflow-x: auto;
+            min-width: 400px;
+        }
+
+        .code-line {
+            display: block;
+            padding: 4px 15px;
+            transition: 0.2s;
+            border-left: 4px solid transparent;
+            white-space: pre;
+        }
+
+        .active-line {
+            background-color: rgba(255, 235, 59, 0.2);
+            border-left: 4px solid #ffeb3b;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .kw { color: #c678dd; } 
+        .type { color: #e5c07b; } 
+        .var { color: #e06c75; } 
+        .num { color: #d19a66; } 
+        .cmt { color: #5c6370; font-style: italic; } 
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Mô phỏng Tìm kiếm Nhị phân & Debug Code</h1>
+        
+        <div class="controls">
+            <label for="targetValue">Nhập X (cần tìm): </label>
+            <input type="number" id="targetValue" value="34">
+            <button id="startBtn" onclick="startSearch()">Chạy Debug</button>
+            <button id="pauseBtn" onclick="togglePause()">Tạm dừng</button>
+            <button id="resetBtn" onclick="resetArray()">Làm mới</button>
+            
+            <div class="slider-container">
+                <label for="speedSlider">Tốc độ chạy: <span id="speedValue">1.5</span>s</label>
+                <input type="range" id="speedSlider" min="500" max="3000" step="100" value="1500" 
+                       oninput="document.getElementById('speedValue').innerText = (this.value / 1000).toFixed(1)">
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div id="array-container"></div>
+                <p id="log">Hãy nhập một số và bấm "Chạy Debug"!</p>
+            </div>
+
+            <div class="right-panel">
+<span class="code-line" id="line-1"><span class="type">bool</span> <span class="var">binarySearch</span>(<span class="type">int</span> a[], <span class="type">int</span> n, <span class="type">int</span> x) {</span>
+<span class="code-line" id="line-2">    <span class="type">int</span> l = <span class="num">0</span>, r = n - <span class="num">1</span>;</span>
+<span class="code-line" id="line-3">    <span class="kw">while</span> (l <= r) {</span>
+<span class="code-line" id="line-4">        <span class="type">int</span> m = (l + r) / <span class="num">2</span>;</span>
+<span class="code-line" id="line-5">        <span class="kw">if</span> (a[m] == x) {</span>
+<span class="code-line" id="line-6">            <span class="kw">return true</span>;</span>
+<span class="code-line" id="line-7">        } <span class="kw">else if</span> (a[m] < x) {</span>
+<span class="code-line" id="line-8">            l = m + <span class="num">1</span>; <span class="cmt">// Tìm nửa phải</span></span>
+<span class="code-line" id="line-9">        } <span class="kw">else</span> {</span>
+<span class="code-line" id="line-10">            r = m - <span class="num">1</span>; <span class="cmt">// Tìm nửa trái</span></span>
+<span class="code-line" id="line-11">        }</span>
+<span class="code-line" id="line-12">    }</span>
+<span class="code-line" id="line-13">    <span class="kw">return false</span>;</span>
+<span class="code-line" id="line-14">}</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mảng 11 phần tử theo đúng yêu cầu
+        const arr = [2, 5, 8, 12, 16, 23, 34, 45, 56, 72, 89];
+        const container = document.getElementById("array-container");
+        const log = document.getElementById("log");
+
+        let currentSearchId = 0;
+        let isPaused = false;
+        let pausePromise = null;
+        let pauseResolve = null;
+
+        function renderArray() {
+            container.innerHTML = "";
+            arr.forEach((num, index) => {
+                let wrapper = document.createElement("div");
+                wrapper.classList.add("box-wrapper");
+                wrapper.id = "wrapper-" + index;
+
+                let label = document.createElement("div");
+                label.classList.add("pointer-label");
+                label.id = "label-" + index;
+
+                let box = document.createElement("div");
+                box.classList.add("box");
+                box.innerText = num;
+                box.id = "box-" + index;
+
+                let indexLabel = document.createElement("div");
+                indexLabel.classList.add("index-label");
+                indexLabel.innerText = index;
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(box);
+                wrapper.appendChild(indexLabel); 
+                container.appendChild(wrapper);
+            });
+        }
+
+        // Hàm tô sáng dòng code
+        function highlightCode(lineNum) {
+            document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active-line'));
+            if (lineNum > 0) {
+                const line = document.getElementById('line-' + lineNum);
+                if(line) line.classList.add('active-line');
+            }
+        }
+
+        function resetArray() {
+            currentSearchId++; 
+            if (pauseResolve) pauseResolve(); 
+            isPaused = false;
+            
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("pauseBtn").style.display = "none";
+            document.getElementById("pauseBtn").innerText = "Tạm dừng";
+            document.getElementById("pauseBtn").style.backgroundColor = "#17a2b8";
+            
+            highlightCode(0); 
+            renderArray();
+            log.innerText = "Đã làm mới. Sẵn sàng!";
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const pBtn = document.getElementById("pauseBtn");
+            if (isPaused) {
+                pausePromise = new Promise(resolve => pauseResolve = resolve);
+                pBtn.innerText = "Tiếp tục";
+                pBtn.style.backgroundColor = "#ffc107";
+                pBtn.style.color = "#000";
+            } else {
+                if (pauseResolve) pauseResolve();
+                pBtn.innerText = "Tạm dừng";
+                pBtn.style.backgroundColor = "#17a2b8";
+                pBtn.style.color = "#fff";
+            }
+        }
+
+        async function smartSleep() {
+            let ms = parseInt(document.getElementById("speedSlider").value);
+            await new Promise(r => setTimeout(r, ms));
+            if (isPaused) await pausePromise; 
+        }
+
+        function updateLabels(l, r, m) {
+            document.querySelectorAll('.pointer-label').forEach(el => el.innerText = "");
+            
+            if (l >= 0 && document.getElementById("label-" + l)) {
+                document.getElementById("label-" + l).innerText += "L ";
+            }
+            if (r >= 0 && document.getElementById("label-" + r)) {
+                let currentText = document.getElementById("label-" + r).innerText;
+                document.getElementById("label-" + r).innerText = currentText ? currentText + ", R " : "R ";
+            }
+            if (m >= 0 && document.getElementById("label-" + m)) {
+                let currentText = document.getElementById("label-" + m).innerText;
+                document.getElementById("label-" + m).innerText = currentText ? currentText + ", Mid" : "Mid";
+            }
+        }
+
+        async function startSearch() {
+            let target = parseInt(document.getElementById("targetValue").value);
+            if (isNaN(target)) { alert("Vui lòng nhập số!"); return; }
+
+            let searchId = ++currentSearchId;
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("pauseBtn").style.display = "inline-block";
+            renderArray(); 
+            highlightCode(0);
+
+            // Bắt đầu khởi tạo
+            highlightCode(2);
+            log.innerText = `[Dòng 2] Khởi tạo biên: L = 0, R = ${arr.length - 1}`;
+            let left = 0;
+            let right = arr.length - 1;
+            await smartSleep(); if (searchId !== currentSearchId) return;
+
+            while (left <= right) {
+                // Kiểm tra điều kiện while
+                highlightCode(3);
+                log.innerText = `[Dòng 3] Kiểm tra l <= r (${left} <= ${right}) -> TRUE`;
+                document.getElementById("box-" + left).classList.add("left-right");
+                document.getElementById("box-" + right).classList.add("left-right");
+                await smartSleep(); if (searchId !== currentSearchId) return;
+                
+                // Tính mid
+                highlightCode(4);
+                let mid = Math.floor((left + right) / 2);
+                updateLabels(left, right, mid);
+                log.innerText = `[Dòng 4] Tính m = (${left} + ${right}) / 2 = ${mid}. (Giá trị a[m] = ${arr[mid]})`;
+                document.getElementById("box-" + mid).classList.add("mid");
+                await smartSleep(); if (searchId !== currentSearchId) return;
+
+                // So sánh ==
+                highlightCode(5);
+                log.innerText = `[Dòng 5] Kiểm tra a[m] == x (${arr[mid]} == ${target}) ?`;
+                await smartSleep(); if (searchId !== currentSearchId) return;
+
+                if (arr[mid] === target) {
+                    highlightCode(6);
+                    log.innerText = `[Dòng 6] Khớp! Trả về TRUE. Kết thúc thuật toán.`;
+                    document.getElementById("box-" + mid).className = "box found";
+                    break; 
+                } 
+                
+                // So sánh <
+                highlightCode(7);
+                log.innerText = `[Dòng 7] Kiểm tra a[m] < x (${arr[mid]} < ${target}) ?`;
+                await smartSleep(); if (searchId !== currentSearchId) return;
+
+                if (arr[mid] < target) {
+                    highlightCode(8);
+                    log.innerText = `[Dòng 8] Đúng. Cập nhật l = m + 1 = ${mid + 1}. Bỏ qua nửa trái.`;
+                    for (let i = left; i <= mid; i++) {
+                        document.getElementById("box-" + i).className = "box discarded";
+                    }
+                    left = mid + 1;
+                } else {
+                    highlightCode(10);
+                    log.innerText = `[Dòng 10] Cập nhật r = m - 1 = ${mid - 1}. Bỏ qua nửa phải.`;
+                    for (let i = mid; i <= right; i++) {
+                        document.getElementById("box-" + i).className = "box discarded";
+                    }
+                    right = mid - 1;
+                }
+                await smartSleep(); if (searchId !== currentSearchId) return;
+            }
+
+            if (left > right) {
+                highlightCode(3);
+                log.innerText = `[Dòng 3] Kiểm tra l <= r (${left} <= ${right}) -> FALSE. Dừng vòng lặp.`;
+                updateLabels(-1, -1, -1);
+                await smartSleep(); if (searchId !== currentSearchId) return;
+
+                highlightCode(13);
+                log.innerText = `[Dòng 13] Không tìm thấy phần tử. Trả về FALSE.`;
+            }
+
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("pauseBtn").style.display = "none";
+        }
+
+        window.onload = renderArray;
+    </script>
+</body>
+</html>
